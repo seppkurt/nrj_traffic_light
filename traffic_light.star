@@ -1,6 +1,6 @@
-load("widgets.star", "widgets")
+load("render.star", "render")
 
-def main(ctx):
+def main():
     # Mock state for demonstration
     state = "SPEND"  # Try "GREEN", "YELLOW", "RED", "SPEND"
 
@@ -13,43 +13,22 @@ def main(ctx):
     # Bulb for SPEND state
     bulb = state == "SPEND"
 
-    # Compose widgets
-    children = [
-        # Traffic light body
-        widgets.Box(
-            left=10, top=4, width=20, height=32, color="#333333", radius=6
+    return render.Root(
+        render.Row(
+            children=[
+            render.Circle(
+                color="#FF0000",
+                diameter=30,
+            ),
+            render.Circle(
+                color="#FFFF00",
+                diameter=30,
+            ),
+            render.Circle(
+                color="#00FF00",
+                diameter=30,
+            )]
         ),
-        # Red light
-        widgets.Ellipse(
-            left=15, top=8, width=10, height=10, color=red
-        ),
-        # Yellow light
-        widgets.Ellipse(
-            left=15, top=18, width=10, height=10, color=yellow
-        ),
-        # Green light
-        widgets.Ellipse(
-            left=15, top=28, width=10, height=10, color=green
-        ),
-    ]
-
-    # Add bulb if SPEND state
-    if bulb:
-        children.append(
-            widgets.Ellipse(
-                left=28, top=28, width=6, height=6, color="#FFFFAA"
-            )
-        )
-
-    # Add state label
-    children.append(
-        widgets.Text(
-            left=2, top=36, text=state, color="#FFFFFF", size=10
-        )
+        #child = render.Text("H, W: %s" % state)
+        #child = render.Text("BTC: %d USD" % rate)
     )
-
-    return widgets.Container(
-        width=40,
-        height=40,
-        children=children
-    ) 
