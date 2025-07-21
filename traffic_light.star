@@ -1,4 +1,7 @@
 load("render.star", "render")
+load("schema.star", "schema")
+
+DEFAULT_WHO = "World"
 
 def get_state(solar_production, battery_percent, household_consumption, time_until_sunset, is_daytime):
     SPEND_THRESHOLD = 80
@@ -28,7 +31,39 @@ def get_state_text(state):
     else:
         return "Unknown state."
 
-def main():
+
+def get_schema():
+    return schema.Schema(
+        version = "1",
+        fields = [
+            schema.Text(
+                id = "1",
+                name = "ha_url",
+                desc = "Home Assistant URL",
+                icon = "home",
+            ),
+            schema.Text(
+                id = "2",
+                name = "ha_token",
+                desc = "Home Assistant Token",
+                icon = "key",
+            ),
+            schema.Text(
+                id = "3",
+                name = "solar_entity",
+                desc = "Solar Production Entity",
+                icon = "sun",
+            ),
+            schema.Text(
+                id = "4",
+                name = "battery_soc",
+                desc = "Battery SOC Entity",
+                icon = "battery",
+            ),
+        ],
+    )
+
+def main(config):
     # Mocked input values (change these to test different states)
     solar_production = 10  # Watts
     battery_percent = 5    # %
@@ -52,6 +87,14 @@ def main():
 
     # State-dependent text
     state_text = get_state_text(state)
+
+    message = "Hello, %s!" % config.str("who", DEFAULT_WHO)
+
+    if config.bool("small"):
+        msg = render.Text(message, font = "CG-pixel-3x5-mono")
+    else:
+        msg = render.Text(message)
+
 
     return render.Root(
         render.Row(
