@@ -1,8 +1,40 @@
 load("render.star", "render")
 load("schema.star", "schema")
 load("time.star", "time")
+load("encoding/json.star", "json")
+load("cache.star", "cache")
+load("http.star", "http")
 
-DEFAULT_WHO = "World"
+def get_entity_status(ha_server, entity_id, token):
+    if ha_server == None:
+        fail("Home Assistant server not configured")
+
+    if entity_id == None:
+        fail("Entity ID not configured")
+
+    if token == None:
+        fail("Bearer token not configured")
+
+    state_res = None
+    cache_key = "%s.%s" % (ha_server, entity_id)
+    cached_res = cache.get(cache_key)
+    if cached_res != None:
+        state_res = json.decode(cached_res)
+    else:
+        rep = http.get("%s/api/states/%s" % (ha_server, entity_id), headers = {
+            "Authorization": "Bearer %s" % token
+        })
+        if rep.status_code != 200:
+            print("HTTP request failed with status %d", rep.status_code)
+            return None
+
+        state_res = rep.json()
+        cache.set(cache_key, rep.body(), ttl_seconds = 10)
+    return state_res
+
+def skip_execution():
+    print("skip_execution")
+    return []
 
 def get_state_text(state):
     if state == "SPEND":
@@ -69,35 +101,9 @@ def get_state_by_points(battery_percent, solar_production, watt_peak, hour_of_da
 
 
 def get_schema():
-    #options = [
-    #    schema.Option(
-    #        display = "Red",
-    #        value = "RED",
-    #    ),
-    #    schema.Option(
-    #        display = "Yellow",
-    #        value = "YELLOW",
-    #    ),
-    #    schema.Option(
-    #        display = "Green",
-    #        value = "GREEN",
-    #    ),
-    #    schema.Option(
-    #        display = "Spend",
-    #        value = "SPEND",
-    #    ),
-    #]
     return schema.Schema(
         version = "1",
         fields = [
-            #schema.Dropdown(
-            #    id = "state_c",
-            #    name = "state_c",
-            #    desc = "debug state",
-            #    icon = "light",
-            #    default = options[0].value,
-            #    options = options,
-            #),
             schema.Text(
                 id = "ha_url",
                 name = "Home Assistant URL",
@@ -122,12 +128,6 @@ def get_schema():
                 desc = "State of Charge of the Battery",
                 icon = "battery",
             ),
-            #schema.Location(
-            #    id = "location",
-            #    name = "Location",
-            #    desc = "Location for which to display time.",
-            #    icon = "locationDot",
-            #),
             schema.Text(
                 id = "watt_peak",
                 name = "Watt Peak for your system (W)",
@@ -145,13 +145,29 @@ def get_schema():
 
 
 def main(config):
-    # Mocked input values (change these to test different states)
-    solar_production = 10  # Watts
-    battery_percent = 5    # %
+    ha_server = config.get("ha_url")
+    token = config.get("ha_token")
+
+    entity_id_soc = config.get("battery_soc_entity")
+    entity_status = get_entity_status(ha_server, entity_id_soc, token)
+    #print(entity_status)
+    if entity_status == None:
+        return skip_execution()
+
+    battery_percent = int(entity_status["state"])
+
+    entity_id_solar = config.get("solar_entity")
+    entity_status = get_entity_status(ha_server, entity_id_solar, token)
+    #print(entity_status)
+    if entity_status == None:
+        return skip_execution()
+
+    solar_production = int(entity_status["state"])
+
     watt_peak = float(config.str("watt_peak", "1000"))
     peak_hour = int(config.str("peak_hour", "13"))
-    # Get current hour
-    hour_of_day = 13
+
+    hour_of_day = time.now().hour
 
     # use points system
     state = get_state_by_points(battery_percent, solar_production, watt_peak, hour_of_day, peak_hour)
