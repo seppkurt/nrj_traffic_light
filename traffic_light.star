@@ -44,7 +44,7 @@ def get_state_text(state):
     elif state == "YELLOW":
         return "Strom sparen"
     elif state == "RED":
-        return "AUS was geht"
+        return "Alles AUS"
     else:
         return "Unknown state."
 
@@ -208,12 +208,14 @@ def main(config):
                                     color="#FFFFFF",
                                 ),
                                 render.WrappedText(
+                                    width=28,
                                     content=battery_percent_text,
                                     font="tom-thumb",
                                     color="#FFFF99",
                                     align="right",
                                 ),
                                 render.WrappedText(
+                                    width=28,
                                     content=solar_production_text,
                                     font="tom-thumb",
                                     color="#FFFF99",
