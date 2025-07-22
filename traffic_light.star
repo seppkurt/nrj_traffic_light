@@ -158,7 +158,7 @@ def main(config):
 
     state_text = get_state_text(state)
     # Append battery and solar info
-    state_text = "%s (bat: %d%%, pv: %d W)" % (state_text, battery_percent, solar_production)
+    state_text = "%s %d%%%dW" % (state_text, battery_percent, solar_production)
 
     # Set light color based on state
     off = "#222222"
