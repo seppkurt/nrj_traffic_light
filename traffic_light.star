@@ -52,7 +52,7 @@ def get_state_text(state):
 def get_points_battery(battery_percent):
     if battery_percent < 20:
         return 0
-    elif battery_percent < 50:
+    elif battery_percent < 40:
         return 1
     elif battery_percent < 80:
         return 2
