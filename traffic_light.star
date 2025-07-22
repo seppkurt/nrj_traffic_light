@@ -33,32 +33,64 @@ def get_state_text(state):
 
 
 def get_schema():
+    options = [
+        schema.Option(
+            display = "Red",
+            value = "RED",
+        ),
+        schema.Option(
+            display = "Yellow",
+            value = "YELLOW",
+        ),
+        schema.Option(
+            display = "Green",
+            value = "GREEN",
+        ),
+        schema.Option(
+            display = "Spend",
+            value = "SPEND",
+        ),
+    ]
     return schema.Schema(
         version = "1",
         fields = [
+            schema.Dropdown(
+                id = "state_c",
+                name = "state_c",
+                desc = "debug state",
+                icon = "light",
+                default = options[0].value,
+                options = options,
+            ),
             schema.Text(
-                id = "1",
-                name = "ha_url",
-                desc = "Home Assistant URL",
+                id = "ha_url",
+                name = "Home Assistant URL",
+                desc = "Home Assistant URL. The address of your HomeAssistant instance, as a full URL.",
                 icon = "home",
             ),
             schema.Text(
-                id = "2",
-                name = "ha_token",
-                desc = "Home Assistant Token",
+                id = "ha_token",
+                name = "Home Assistant Token",
+                desc = "Home Assistant token. Navigate to User Settings > Long-lived access tokens.",
                 icon = "key",
             ),
             schema.Text(
-                id = "3",
-                name = "solar_entity",
-                desc = "Solar Production Entity",
+                id = "solar_entity",
+                name = "Solar Production Entity",
+                desc = "Entity for solar production.",
                 icon = "sun",
             ),
             schema.Text(
-                id = "4",
-                name = "battery_soc",
-                desc = "Battery SOC Entity",
+                id = "battery_soc_entity",
+                name = "Battery SOC Entity",
+                desc = "State of Charge of the Battery",
                 icon = "battery",
+            ),
+            schema.Location(
+                id = "location",
+                name = "Location",
+                desc = "Location for which to display time.",
+                icon = "locationDot",
             ),
         ],
     )
@@ -73,6 +105,9 @@ def main(config):
 
     state = get_state(solar_production, battery_percent, household_consumption, time_until_sunset, is_daytime)
 
+    state = config.str("state_c", "RED")
+    state_text = get_state_text(state)
+
     # Set light color based on state
     off = "#222222"
     color = off
@@ -85,33 +120,25 @@ def main(config):
     elif state in ["SPEND"]:
         color = "#0000FF"
 
-    # State-dependent text
-    state_text = get_state_text(state)
-
-    message = "Hello, %s!" % config.str("who", DEFAULT_WHO)
-
-    if config.bool("small"):
-        msg = render.Text(message, font = "CG-pixel-3x5-mono")
-    else:
-        msg = render.Text(message)
-
-
     return render.Root(
-        render.Row(
-            children=[
-                render.Circle(
-                    diameter=30, 
-                    color=color,
-                ),
-                render.Padding(
-                    pad=(2, 0, 2, 0),
-                    child=render.WrappedText(
-                        width=30,
-                        font="tb-8",
-                        content=state_text,
-                        color="#FFFFFF",
+        render.Padding(
+            pad=(1),
+            child=render.Row(
+                children=[
+                    render.Circle(
+                        diameter=30, 
+                        color=color,
                     ),
-                ),
-            ]
+                    render.Padding(
+                        pad=(2, 0, 2, 0),
+                        child=render.WrappedText(
+                            width=30,
+                            font="tb-8",
+                            content=state_text,
+                            color="#FFFFFF",
+                        ),
+                    ),
+                ]
+            )
         )
     )
