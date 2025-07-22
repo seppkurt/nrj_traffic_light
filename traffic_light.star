@@ -38,13 +38,13 @@ def skip_execution():
 
 def get_state_text(state):
     if state == "SPEND":
-        return "Alles AN was geht!"
+        return "Alles AN!"
     elif state == "GREEN":
-        return "Genug Strom da."
+        return "Genug Strom"
     elif state == "YELLOW":
-        return "Strom sparen."
+        return "Strom sparen"
     elif state == "RED":
-        return "AUS was geht."
+        return "AUS was geht"
     else:
         return "Unknown state."
 
@@ -172,9 +172,9 @@ def main(config):
     # use points system
     state = get_state_by_points(battery_percent, solar_production, watt_peak, hour_of_day, peak_hour)
 
-    state_text = get_state_text(state)
-    # Append battery and solar info
-    state_text = "%s %d%%%dW" % (state_text, battery_percent, solar_production)
+    state_text = "%s" % get_state_text(state)
+    battery_percent_text = "%d %%" % battery_percent
+    solar_production_text = "%d W" % solar_production
 
     # Set light color based on state
     off = "#222222"
@@ -199,12 +199,28 @@ def main(config):
                     ),
                     render.Padding(
                         pad=(2, 0, 2, 0),
-                        child=render.WrappedText(
-                            width=30,
-                            font="tb-8",
-                            content=state_text,
-                            color="#FFFFFF",
-                        ),
+                        child=render.Column(
+                            children=[
+                                render.WrappedText(
+                                    width=30,
+                                    font="tb-8",
+                                    content=state_text,
+                                    color="#FFFFFF",
+                                ),
+                                render.WrappedText(
+                                    content=battery_percent_text,
+                                    font="tom-thumb",
+                                    color="#FFFF99",
+                                    align="right",
+                                ),
+                                render.WrappedText(
+                                    content=solar_production_text,
+                                    font="tom-thumb",
+                                    color="#FFFF99",
+                                    align="right",
+                                ),
+                            ]
+                        )
                     ),
                 ]
             )
