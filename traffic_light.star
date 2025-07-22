@@ -69,35 +69,35 @@ def get_state_by_points(battery_percent, solar_production, watt_peak, hour_of_da
 
 
 def get_schema():
-    options = [
-        schema.Option(
-            display = "Red",
-            value = "RED",
-        ),
-        schema.Option(
-            display = "Yellow",
-            value = "YELLOW",
-        ),
-        schema.Option(
-            display = "Green",
-            value = "GREEN",
-        ),
-        schema.Option(
-            display = "Spend",
-            value = "SPEND",
-        ),
-    ]
+    #options = [
+    #    schema.Option(
+    #        display = "Red",
+    #        value = "RED",
+    #    ),
+    #    schema.Option(
+    #        display = "Yellow",
+    #        value = "YELLOW",
+    #    ),
+    #    schema.Option(
+    #        display = "Green",
+    #        value = "GREEN",
+    #    ),
+    #    schema.Option(
+    #        display = "Spend",
+    #        value = "SPEND",
+    #    ),
+    #]
     return schema.Schema(
         version = "1",
         fields = [
-            schema.Dropdown(
-                id = "state_c",
-                name = "state_c",
-                desc = "debug state",
-                icon = "light",
-                default = options[0].value,
-                options = options,
-            ),
+            #schema.Dropdown(
+            #    id = "state_c",
+            #    name = "state_c",
+            #    desc = "debug state",
+            #    icon = "light",
+            #    default = options[0].value,
+            #    options = options,
+            #),
             schema.Text(
                 id = "ha_url",
                 name = "Home Assistant URL",
@@ -122,12 +122,12 @@ def get_schema():
                 desc = "State of Charge of the Battery",
                 icon = "battery",
             ),
-            schema.Location(
-                id = "location",
-                name = "Location",
-                desc = "Location for which to display time.",
-                icon = "locationDot",
-            ),
+            #schema.Location(
+            #    id = "location",
+            #    name = "Location",
+            #    desc = "Location for which to display time.",
+            #    icon = "locationDot",
+            #),
             schema.Text(
                 id = "watt_peak",
                 name = "Watt Peak for your system (W)",
@@ -156,9 +156,9 @@ def main(config):
     # use points system
     state = get_state_by_points(battery_percent, solar_production, watt_peak, hour_of_day, peak_hour)
 
-    # Debug-Override
-    state = config.str("state_c", state)
     state_text = get_state_text(state)
+    # Append battery and solar info
+    state_text = "%s (bat: %d%%, pv: %d W)" % (state_text, battery_percent, solar_production)
 
     # Set light color based on state
     off = "#222222"
