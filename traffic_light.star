@@ -4,6 +4,7 @@ load("time.star", "time")
 load("encoding/json.star", "json")
 load("cache.star", "cache")
 load("http.star", "http")
+load("math.star", "math")
 
 def get_entity_status(ha_server, entity_id, token):
     if ha_server == None:
@@ -126,6 +127,24 @@ def get_schema():
                 id = "battery_soc_entity",
                 name = "Battery SOC Entity",
                 desc = "State of Charge of the Battery",
+                icon = "battery-half",
+            ),
+            schema.Text(
+                id = "grid_entity",
+                name = "Grid Entity",
+                desc = "Entity for grid power.",
+                icon = "house-chimney-crack",
+            ),
+            schema.Text(
+                id = "production_today_entity_remaining",
+                name = "Production Today Entity Remaining",
+                desc = "Entity for production today remaining.",
+                icon = "bolt",
+            ),
+            schema.Text(
+                id = "battery_size",
+                name = "Battery Size",
+                desc = "Size of the battery in Wh.",
                 icon = "battery",
             ),
             schema.Text(
@@ -153,7 +172,6 @@ def main(config):
     #print(entity_status)
     if entity_status == None:
         return skip_execution()
-
     battery_percent = int(entity_status["state"])
 
     entity_id_solar = config.get("solar_entity")
@@ -161,8 +179,24 @@ def main(config):
     #print(entity_status)
     if entity_status == None:
         return skip_execution()
-
     solar_production = int(entity_status["state"])
+
+    entity_id_grid = config.get("grid_entity")
+    entity_status = get_entity_status(ha_server, entity_id_grid, token)
+    #print(entity_status)
+    if entity_status == None:
+        return skip_execution()
+    grid = math.round(float(entity_status["state"]))
+
+    entity_id_production_today_remaining = config.get("production_today_entity_remaining")
+    entity_status = get_entity_status(ha_server, entity_id_production_today_remaining, token)
+    #print(entity_status)
+    if entity_status == None:
+        return skip_execution()
+    production_today_remaining = float(entity_status["state"])
+
+    battery_size = float(config.str("battery_size", "1000"))
+    production_today_remaining_of_battery = ((production_today_remaining * 1000) / battery_size) * 100
 
     watt_peak = float(config.str("watt_peak", "1000"))
     peak_hour = int(config.str("peak_hour", "13"))
@@ -175,6 +209,8 @@ def main(config):
     state_text = "%s" % get_state_text(state)
     battery_percent_text = "%d %%" % battery_percent
     solar_production_text = "%d W" % solar_production
+    grid_text = "%d W" % grid
+    production_today_remaining_of_battery_text = "%d %%" % production_today_remaining_of_battery
 
     # Set light color based on state
     off = "#222222"
@@ -189,42 +225,84 @@ def main(config):
         color = "#0000FF"
 
     return render.Root(
-        render.Padding(
-            pad=(1),
-            child=render.Row(
-                children=[
-                    render.Circle(
-                        diameter=30, 
-                        color=color,
-                    ),
-                    render.Padding(
-                        pad=(2, 0, 2, 0),
-                        child=render.Column(
+        render.Column(
+            children=[
+                render.Row(
+                    children=[
+                        render.Column(
                             children=[
-                                render.WrappedText(
-                                    width=30,
-                                    font="tb-8",
-                                    content=state_text,
-                                    color="#FFFFFF",
-                                ),
-                                render.WrappedText(
-                                    width=28,
-                                    content=battery_percent_text,
-                                    font="tom-thumb",
-                                    color="#FFFF99",
-                                    align="right",
-                                ),
-                                render.WrappedText(
-                                    width=28,
-                                    content=solar_production_text,
-                                    font="tom-thumb",
-                                    color="#FFFF99",
-                                    align="right",
+                                render.Circle(
+                                    diameter=20, 
+                                    color=color,
                                 ),
                             ]
-                        )
-                    ),
-                ]
-            )
-        )
+                        ),
+                        render.Column(
+                            children=[
+                                render.Padding(
+                                    pad=(2, 1, 0, 1),
+                                    child=render.Column(
+                                        children=[
+                                            render.WrappedText(
+                                                width=20,
+                                                content=battery_percent_text,
+                                                font="tom-thumb",
+                                                color="#FFFF99",
+                                                align="right",
+                                            ),
+                                            render.WrappedText(
+                                                width=20,
+                                                content=solar_production_text,
+                                                font="tom-thumb",
+                                                color="#FFFF99",
+                                                align="right",
+                                            ),
+                                        ]
+                                    )
+                                ),
+                            ]
+                        ),
+                        render.Column(
+                            children=[
+                                render.Padding(
+                                    pad=(1, 1, 0, 1),
+                                    child=render.Column(
+                                        children=[
+                                            render.WrappedText(
+                                                width=20    ,
+                                                content=grid_text,
+                                                font="tom-thumb",
+                                                color="#FFFF99",
+                                                align="right",
+                                            ),
+                                            render.WrappedText(
+                                                width=20,
+                                                content=production_today_remaining_of_battery_text,
+                                                font="tom-thumb",
+                                                color="#FFFF99",
+                                                align="right",
+                                            ),
+                                        ]
+                                    )
+                                ),
+                            ]
+                        ),
+                    ]
+                ),
+                render.Row(
+                    children=[
+                        render.Padding(
+                            pad=(1, 2, 1, 2),
+                            child=render.WrappedText(
+                                width=62,
+                                font="tb-8",
+                                content=state_text,
+                                color="#FFFFFF",
+                                align="center",
+                            ),
+                        ),
+                    ]
+                ),
+            ]
+        ),
     )
