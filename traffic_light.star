@@ -172,14 +172,14 @@ def main(config):
     #print(entity_status)
     if entity_status == None:
         return skip_execution()
-    battery_percent = int(entity_status["state"])
+    battery_percent = int(math.round(float(entity_status["state"])))
 
     entity_id_solar = config.get("solar_entity")
     entity_status = get_entity_status(ha_server, entity_id_solar, token)
     #print(entity_status)
     if entity_status == None:
         return skip_execution()
-    solar_production = int(entity_status["state"])
+    solar_production = int(math.round(float(entity_status["state"])))
 
     entity_id_grid = config.get("grid_entity")
     entity_status = get_entity_status(ha_server, entity_id_grid, token)
