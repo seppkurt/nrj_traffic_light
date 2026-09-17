@@ -16,6 +16,8 @@ def get_entity_status(ha_server, entity_id, token):
     if token == None:
         fail("Bearer token not configured")
 
+    ha_server = ha_server.rstrip("/")
+
     state_res = None
     cache_key = "%s.%s" % (ha_server, entity_id)
     cached_res = cache.get(cache_key)
