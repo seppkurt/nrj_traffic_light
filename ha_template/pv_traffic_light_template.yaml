@@ -1,0 +1,92 @@
+# PV Consumption Traffic Light — plain Home Assistant template sensor.
+#
+# Fill in your real entity IDs and config values below (each entity ID
+# appears twice: once in `trigger`, once in `variables` — triggers can't
+# reference variables, so both need the literal entity_id). Use the same
+# battery_size / watt_peak / peak_hour / surplus_threshold values you used
+# in the Tidbyt traffic_light.star app config, to keep both in sync.
+#
+# Then add ONE line to configuration.yaml:
+#
+#   template:
+#     - !include ha_template/pv_traffic_light_template.yaml
+#
+# (append `- !include ...` to your existing `template:` list if you
+# already have one), then Developer Tools -> YAML -> Quick Reload ->
+# "Template Entities" to apply without a full restart.
+
+variables:
+  battery_soc_entity: sensor.hub_2000_electric_level
+  solar_entity: sensor.hub_2000_solar_input_power
+  grid_entity: sensor.shellypro3em_34987a4627a4_phase_c_active_power
+  production_today_remaining_entity: sensor.energy_production_today_remaining_2
+  battery_size: 4000
+  watt_peak: 1080
+  peak_hour: 13
+  surplus_threshold: 1.0
+  battery_percent: "{{ states(battery_soc_entity) | float(none) }}"
+  solar_production: "{{ states(solar_entity) | float(none) }}"
+  grid_power: "{{ states(grid_entity) | float(none) }}"
+  production_remaining: "{{ states(production_today_remaining_entity) | float(none) }}"
+  battery_points: >-
+    {{ 0 if (battery_percent is none or battery_percent < 20)
+       else 1 if battery_percent < 40
+       else 2 if battery_percent < 80
+       else 3 }}
+  production_ratio: "{{ (solar_production / watt_peak) if (solar_production is not none and watt_peak > 0) else none }}"
+  production_points: >-
+    {{ 0 if (production_ratio is none or production_ratio < 0.10)
+       else 1 if production_ratio < 0.40
+       else 2 if production_ratio < 0.70
+       else 3 }}
+  hour_of_day: "{{ now().hour }}"
+  time_diff: "{{ ((hour_of_day - peak_hour + 24) % 24) }}"
+  time_points: "{{ 1 if time_diff <= 3 else (0 if time_diff <= 6 else -1) }}"
+  total_points: "{{ battery_points + production_points + time_points }}"
+  production_remaining_pct: "{{ ((production_remaining * 1000 / battery_size) * 100) if (production_remaining is not none and battery_size) else none }}"
+  battery_headroom_wh: "{{ (battery_size * (1 - (battery_percent / 100))) if battery_percent is not none else none }}"
+  remaining_wh: "{{ (production_remaining * 1000) if production_remaining is not none else none }}"
+  remaining_ratio: >-
+    {{ (999 if battery_headroom_wh <= 1 else (remaining_wh / battery_headroom_wh))
+       if (remaining_wh is not none and battery_headroom_wh is not none) else none }}
+  base_state: >-
+    {{ 'red' if total_points <= 0
+       else 'yellow' if total_points <= 2
+       else 'green' if total_points <= 4
+       else 'blue' }}
+
+trigger:
+  - platform: state
+    entity_id: sensor.hub_2000_electric_level
+  - platform: state
+    entity_id: sensor.hub_2000_solar_input_power
+  - platform: state
+    entity_id: sensor.shellypro3em_34987a4627a4_phase_c_active_power
+  - platform: state
+    entity_id: sensor.energy_production_today_remaining_2
+  - platform: time_pattern
+    minutes: "/5"
+
+sensor:
+  - name: PV Consumption Traffic Light
+    unique_id: pv_consumption_traffic_light
+    availability: "{{ battery_percent is not none and solar_production is not none }}"
+    state: >-
+      {%- set gated = base_state -%}
+      {%- if remaining_ratio is not none -%}
+        {%- if gated == 'blue' and remaining_ratio < surplus_threshold -%}
+          {%- set gated = 'green' -%}
+        {%- endif -%}
+        {%- if gated in ['blue', 'green'] and remaining_ratio < (surplus_threshold / 3) -%}
+          {%- set gated = 'yellow' -%}
+        {%- endif -%}
+      {%- endif -%}
+      {{ gated }}
+    attributes:
+      battery_percent: "{{ battery_percent }}"
+      solar_production_w: "{{ solar_production }}"
+      grid_power_w: "{{ grid_power }}"
+      production_remaining_pct: "{{ production_remaining_pct | round(0) if production_remaining_pct is not none else none }}"
+      points: "{{ total_points }}"
+      base_state: "{{ base_state }}"
+      remaining_ratio: "{{ remaining_ratio | round(2) if remaining_ratio is not none else none }}"

@@ -103,6 +103,35 @@ def get_state_by_points(battery_percent, solar_production, watt_peak, hour_of_da
         return "SPEND"
 
 
+def get_remaining_ratio(production_today_remaining, battery_size, battery_percent):
+    # How much forecast production is left today, relative to how much
+    # room is still free in the battery. >=1 means there's at least as
+    # much sun left as the battery can hold (genuine surplus coming).
+    if battery_size <= 0:
+        return None
+    headroom_wh = battery_size * (1 - (battery_percent / 100.0))
+    remaining_wh = production_today_remaining * 1000  # kWh -> Wh
+    if headroom_wh <= 1:
+        return 999.0  # battery already full: anything left is pure surplus
+    return remaining_wh / headroom_wh
+
+
+def apply_surplus_gate(base_state, remaining_ratio, surplus_threshold):
+    # A brief production spike near peak_hour on an otherwise weak day can
+    # push get_state_by_points() to SPEND even though little more sun is
+    # actually coming. Cap SPEND/GREEN unless the remaining forecast
+    # backs it up. The two checks must cascade (a very low ratio should be
+    # able to fall all the way to YELLOW, not stop at GREEN).
+    if remaining_ratio == None:
+        return base_state
+    state = base_state
+    if state == "SPEND" and remaining_ratio < surplus_threshold:
+        state = "GREEN"
+    if state in ["SPEND", "GREEN"] and remaining_ratio < (surplus_threshold / 3.0):
+        state = "YELLOW"
+    return state
+
+
 def get_schema():
     return schema.Schema(
         version = "1",
@@ -161,6 +190,13 @@ def get_schema():
                 desc = "When your solar system produces the most power.",
                 icon = "clock",
             ),
+            schema.Text(
+                id = "surplus_threshold",
+                name = "Remaining production surplus threshold",
+                desc = "Ratio of remaining forecast production to free battery headroom required to show SPEND. 1.0 = as much sun left as the battery has room for.",
+                icon = "sun",
+                default = "1.0",
+            ),
         ],
     )
 
@@ -205,8 +241,12 @@ def main(config):
 
     hour_of_day = time.now().hour
 
-    # use points system
-    state = get_state_by_points(battery_percent, solar_production, watt_peak, hour_of_day, peak_hour)
+    # use points system, then gate SPEND/GREEN against how much production
+    # is actually still forecast today vs. free battery headroom
+    base_state = get_state_by_points(battery_percent, solar_production, watt_peak, hour_of_day, peak_hour)
+    surplus_threshold = float(config.str("surplus_threshold", "1.0"))
+    remaining_ratio = get_remaining_ratio(production_today_remaining, battery_size, battery_percent)
+    state = apply_surplus_gate(base_state, remaining_ratio, surplus_threshold)
 
     state_text = "%s" % get_state_text(state)
     battery_percent_text = "%d %%" % battery_percent

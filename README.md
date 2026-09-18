@@ -47,6 +47,24 @@ The app calculates a total score based on three factors:
 - **GREEN**: 3-4 points
 - **BLUE**: 5+ points
 
+### Surplus Gate (post-processing)
+
+The points system alone can misfire: a brief production spike near your
+configured peak hour, on a day that overall produces little, can score high
+enough for BLUE even though there's barely any more sun coming. To catch
+this, the final state above ("base state") is capped using how much
+forecast production is left today relative to how much room is still free
+in the battery:
+
+- `battery_headroom_wh = battery_size * (1 - battery_percent / 100)`
+- `remaining_ratio = (production_today_remaining_kWh * 1000) / battery_headroom_wh`
+- If base state is **BLUE** and `remaining_ratio < surplus_threshold` (default `1.0`) → downgrade to **GREEN**.
+- If (possibly-downgraded) state is **BLUE or GREEN** and `remaining_ratio < surplus_threshold / 3` → downgrade further to **YELLOW**.
+
+Configure `surplus_threshold` in the app config (default `1.0`). Raise it
+to require a bigger forecast surplus before recommending BLUE/GREEN; lower
+it to loosen the gate.
+
 ## Configuration
 
 ### Required Home Assistant Setup
@@ -75,6 +93,7 @@ The app calculates a total score based on three factors:
 | **Battery Size** | Battery capacity in Watt-hours | `10000` |
 | **Watt Peak** | Peak solar system capacity in Watts | `5000` |
 | **Peak Hour** | Hour of day with maximum solar production (0-23) | `13` |
+| **Remaining Production Surplus Threshold** | Ratio of remaining forecast production to free battery headroom required to show BLUE/GREEN (see [Surplus Gate](#surplus-gate-post-processing)) | `1.0` |
 
 ### Example Configuration
 
@@ -88,6 +107,7 @@ Production Today Entity Remaining: sensor.daily_production_remaining
 Battery Size: 10000
 Watt Peak: 5000
 Peak Hour: 13
+Remaining Production Surplus Threshold: 1.0
 ```
 
 ## Display Layout
@@ -122,3 +142,9 @@ The app includes error handling and will skip execution if any required data can
 This app integrates seamlessly with Home Assistant's REST API to fetch real-time sensor data. It uses caching (10-second TTL) to reduce API calls and improve performance.
 
 The app is designed to work with common solar monitoring setups and can be easily adapted for different energy management systems by modifying the entity IDs in the configuration.
+
+## Home Assistant dashboard mirror
+
+[`ha_template/`](ha_template/README.md) — a plain HA template sensor that
+ports the same points system natively, so the state also shows up on your
+phone's HA app, without touching this Tidbyt app.
