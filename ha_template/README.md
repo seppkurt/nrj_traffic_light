@@ -87,15 +87,16 @@ type: tile
 entity: sensor.pv_consumption_traffic_light
 name: PV Consumption
 icon: mdi:solar-power
+state_content: []
 color: >-
   {% set s = states('sensor.pv_consumption_traffic_light') %}
-  {% if s == 'red' %}red
-  {% elif s == 'yellow' %}yellow
-  {% elif s == 'green' %}green
-  {% elif s == 'blue' %}blue
-  {% else %}grey
-  {% endif %}
+  {{ s if s in ['red', 'yellow', 'green', 'blue'] else 'grey' }}
 ```
+
+`state_content: []` hides the literal `red`/`yellow`/`green`/`blue` state
+text, leaving just the colored icon as the indicator — the sensor's state
+already matches HA's built-in color names, so no lookup table is needed
+(falls back to grey if the sensor is `unavailable`/`unknown`).
 
 The templated `color:` field on the Tile card needs HA 2024.10 or newer. If
 your version is older, install the Mushroom cards (HACS), which have
